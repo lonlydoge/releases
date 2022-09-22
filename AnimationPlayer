@@ -1,0 +1,101 @@
+local Speed = getgenv().Speed
+local AnimationId = getgenv().AnimationId
+Speed = 100 - Speed
+AnimationId = "rbxassetid://"..AnimationId
+
+local LocalPlayer = game:GetService("Players").LocalPlayer
+
+local GetKeyframes = function(Keyframe)
+    local Keyframes = {}
+
+    for _, v in pairs(Keyframe:GetDescendants()) do
+        if v:IsA("Pose") then
+            Keyframes[v.Name] = v.CFrame
+        end
+    end
+
+    return Keyframes
+end
+
+local GetJoint = function(Joint)
+    return LocalPlayer.Character.Torso[Joint]
+end
+
+local GetNext = function(Table, Number)
+    local Count = 100
+    local Index = 0
+    for i, _ in pairs(Table) do
+        if i > Number and i - Number < Count then
+            Count = i - Number
+
+            Index = i
+        end
+    end
+    return Index
+end
+
+local GetKeyByIndex = function(Dictionary, Index)
+    local Count = 1
+
+    for k, v in pairs(Dictionary) do
+        if Count == Index then
+            return k
+        else
+            Count = Count + 1
+        end
+    end
+end
+
+local Joints = {
+    ["Right Shoulder"] = GetJoint("Right Shoulder"),
+    ["Left Shoulder"] = GetJoint("Left Shoulder"),
+    ["Right Hip"] = GetJoint("Right Hip"),
+    ["Left Hip"] = GetJoint("Left Hip"),
+    ["Neck"] = GetJoint("Right Shoulder"),
+    ["RootJoint"] = LocalPlayer.Character.HumanoidRootPart["RootJoint"]
+}
+
+local C0s = {}
+
+for Joint, JointPath in pairs(Joints) do
+    C0s[Joint] = JointPath.C0
+end
+
+local Animation = game:GetObjects(AnimationId)[1]
+
+local KFrames = {}
+local KFCount = 0;
+
+for _, Object in pairs(Animation:GetChildren()) do
+    if Object:IsA("Keyframe") then
+        KFrames[Object.Time] = GetKeyframes(Object)
+
+        KFCount = KFCount + 1;
+    end
+end
+
+LocalPlayer.Character.Humanoid.Animator.Parent = nil
+
+if Speed ~= 0 then
+    Speed = Speed / KFCount
+end
+
+local Count = 0;
+
+for Time, Properties in pairs(KFrames) do
+    local Next = GetNext(KFrames, Count)
+    local Keyframe = KFrames[Next]
+
+    Count = Next;
+
+    for _, Joint in pairs(Joints) do
+        if Keyframe[Joint.Part1.Name] then
+            local Tween = game:GetService("TweenService"):Create(Joint, TweenInfo.new(Speed), {
+                Transform = Keyframe[Joint.Part1.Name]
+            })
+            Tween:Play()
+
+            Tween.Completed:wait()
+        end
+    end
+end
